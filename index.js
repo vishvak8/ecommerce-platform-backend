@@ -8,13 +8,17 @@ const { OpenAI } = require("openai");
 dotenv.config();
 
 const app = express();
-const PORT = 5001;
+const PORT = process.env.PORT || 5001;
 
 const pool = new Pool({
-  user: "vishvak",
-  host: "localhost",
-  database: "ecommerce",
-  port: 5432,
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 app.use(cors());
@@ -84,8 +88,7 @@ Now translate:
       .replace(/[।|]+$/, "")                             // remove trailing । or |
       .trim();
 
-    // Capitalize first letter if it's Hindi
-    if (translated && translated.length > 0) {
+    if (translated.length > 0) {
       translated = translated[0].toUpperCase() + translated.slice(1);
     }
 
@@ -132,5 +135,5 @@ Only use the numbers.`;
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
