@@ -1,0 +1,136 @@
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const { Pool } = require("pg");
+const dotenv = require("dotenv");
+const { OpenAI } = require("openai");
+
+dotenv.config();
+
+const app = express();
+const PORT = 5001;
+
+const pool = new Pool({
+  user: "vishvak",
+  host: "localhost",
+  database: "ecommerce",
+  port: 5432,
+});
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// Save product
+app.post("/products", async (req, res) => {
+  const { name, price, description, imageUrl } = req.body;
+  try {
+    const result = await pool.query(
+      "INSERT INTO products (name, price, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, price, description, imageUrl]
+    );
+    res.status(201).json({ message: "Product added", product: result.rows[0] });
+  } catch (err) {
+    console.error("DB Insert Error:", err);
+    res.status(500).json({ message: "Error saving product" });
+  }
+});
+
+// Fetch products
+app.get("/products", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM products ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("DB Fetch Error:", err);
+    res.status(500).json({ message: "Error fetching products" });
+  }
+});
+
+// Translation using OpenAI with improved prompt + cleanup + capitalization
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+app.post("/translate", async (req, res) => {
+  const { text } = req.body;
+  const prompt = `
+Translate the following English product description into **natural, fluent Hindi** as spoken by a native Hindi speaker.
+Avoid robotic or literal translation. Make sure it sounds smooth, clean, and human-like.
+
+Example:
+English: "Apple MacBook Pro with M2 chip and Retina Display"
+Hindi: "एम2 चिप और रेटिना डिस्प्ले वाला एप्पल मैकबुक प्रो"
+
+Now translate:
+"${text}"
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a professional English to Hindi translator." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 100,
+    });
+
+    let rawOutput = response.choices[0].message.content || "";
+
+    // Clean and format
+    let translated = rawOutput
+      .replace(/[\u200E\u200F\u202A-\u202E]/g, "")       // remove invisible unicode
+      .replace(/<[^>]*>?/gm, "")                         // remove HTML tags
+      .replace(/^"(.*)"$/, "$1")                         // remove surrounding quotes
+      .replace(/[।|]+$/, "")                             // remove trailing । or |
+      .trim();
+
+    // Capitalize first letter if it's Hindi
+    if (translated && translated.length > 0) {
+      translated = translated[0].toUpperCase() + translated.slice(1);
+    }
+
+    res.json({ translatedText: translated });
+  } catch (err) {
+    console.error("Translation Error:", err);
+    res.status(500).json({ message: "Translation failed" });
+  }
+});
+
+// Semantic search using OpenAI
+app.post("/semantic-search", async (req, res) => {
+  const { query, products } = req.body;
+
+  try {
+    const prompt = `
+You are an intelligent e-commerce assistant.
+Given this user query: "${query}"
+And the following product list:\n\n${products
+      .map((p, i) => `${i + 1}. ${p.name}: ${p.description}`)
+      .join("\n")}
+
+Return the numbers of the top 1–3 most relevant products in an array format like: [1, 3, 5]
+Only use the numbers.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 50,
+    });
+
+    const answer = response.choices[0].message.content;
+    const matches = answer.match(/\[(.*?)\]/);
+    const indexes = matches
+      ? matches[1].split(",").map((s) => parseInt(s.trim()) - 1)
+      : [];
+
+    const matchedProducts = indexes.map((i) => products[i]).filter(Boolean);
+    res.json({ results: matchedProducts });
+  } catch (err) {
+    console.error("Semantic search failed:", err);
+    res.status(500).json({ message: "AI search failed" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
