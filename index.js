@@ -98,26 +98,29 @@ Now translate:
   }
 });
 
-// Enhanced Semantic Search
+// Enhanced Semantic Search Fix
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
   try {
     const prompt = `
-You are a strict e-commerce AI assistant. Based on the user's query and the product list below, return the most relevant products.
+You are a strict e-commerce product search assistant.
 
-Rules:
-- Only return phones if query asks for phone, laptop if it asks for laptop, etc.
-- Strictly obey budget (e.g., "under 100000" → don't return ₹139999 products)
-- Don't show iPhones for Android queries and vice versa
-- Don't guess. If nothing is a good fit, return []
+Match the user's query to the most relevant products ONLY from the list below.
+Follow these strict rules:
 
-User Query: "${query}"
+- If the query says "phone", do NOT return laptops or cameras.
+- If the query says "Android", never return iPhones.
+- Match price strictly: if it says "under ₹100000", only return products with price below 100000.
+- Match use-case like "drawing/sketching" only with devices that clearly mention stylus, pen, or note-taking support.
+- Return nothing ([]) if no strong match exists. Do NOT guess.
 
-Product List:
+Query: "${query}"
+
+Product list:
 ${products.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Reply ONLY with index numbers like [2, 4]. If no matches, reply []
+Reply ONLY with numbers like [1, 3] or [] if no match.
 `;
 
     const response = await openai.chat.completions.create({
