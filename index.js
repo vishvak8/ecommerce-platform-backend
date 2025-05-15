@@ -50,7 +50,7 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// Translation using OpenAI with improved prompt + cleanup + capitalization
+// Translation using OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.post("/translate", async (req, res) => {
@@ -98,30 +98,28 @@ Now translate:
   }
 });
 
-// Semantic search using OpenAI
+// Enhanced Semantic search
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
   try {
     const prompt = `
-You are a smart e-commerce search assistant. 
-Your task is to identify the most relevant products from the list based on the user's query.
+You are an intelligent product matching engine for an e-commerce app.
 
-Match based on:
-- Product name and description
-- Features like chipset (A17, Snapdragon), brand (Apple, Samsung), camera, etc.
-- Price if mentioned (e.g. "under ₹100000")
+Given the user's query and product list, return ONLY the most relevant product numbers.
 
-Strictly avoid unrelated or vaguely matching products.
+Important rules:
+- Match keywords strictly (e.g., if user says "Android", don’t return iPhone)
+- Consider product type (phone, camera, shoes), specs (chip, battery, price), and brand
+- If the query mentions price (like "under 100000"), filter accordingly
+- Avoid returning loosely related or irrelevant products
 
-User query: "${query}"
+User Query: "${query}"
 
-Product list:
-${products
-      .map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`)
-      .join("\n")}
+Product List:
+${products.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Return only the index numbers of the top 1–3 best matching products like [1, 2, 4]. Do not include any explanation.
+Respond ONLY with an array of numbers like: [2, 5]
 `;
 
     const response = await openai.chat.completions.create({
