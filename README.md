@@ -1,7 +1,7 @@
 # E-Commerce Platform – Backend
 This is the backend for a mini e-commerce platform built with Node.js, Express, and PostgreSQL. It allows users to submit and view products, perform contextual AI-based search using OpenAI, and translate product descriptions to Hindi.
 
-**Live API URL: https://ecommerce-platform-backend-n9wx.onrender.com
+**Live API URL:** https://ecommerce-platform-backend-n9wx.onrender.com
 
 ---
 
