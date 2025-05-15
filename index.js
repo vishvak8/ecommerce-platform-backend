@@ -98,30 +98,26 @@ Now translate:
   }
 });
 
-// Enhanced Semantic Search
+// ✅ Enhanced Semantic Search
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
   try {
     const prompt = `
-You are an intelligent and strict product search engine for an e-commerce website.
+You are a strict e-commerce AI assistant. Based on the user's query and the product list below, return the most relevant products.
 
-Your task is to match the user's query to the **most relevant** product(s) from the list.
-Do not guess. Avoid returning wrong categories. Return nothing if there’s no strong match.
+Rules:
+- Only return phones if query asks for phone, laptop if it asks for laptop, etc.
+- Strictly obey budget (e.g., "under 100000" → don't return ₹139999 products)
+- Don't show iPhones for Android queries and vice versa
+- Don't guess. If nothing is a good fit, return []
 
-Guidelines:
-- Match by purpose (e.g. phone, camera, laptop, drawing tablet)
-- Match by brand (e.g. Apple, Samsung), specs (chipset, battery), or use-case (vlogging, sketching)
-- Strictly obey pricing constraints like "under ₹100000"
-- Do not return laptops for phone queries or cameras for sketching queries
-- If nothing is appropriate, return []
+User Query: "${query}"
 
-User query: "${query}"
-
-Product list:
+Product List:
 ${products.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Return only the indexes of correct matches like [2, 5] — or [] if no valid match exists.
+Reply ONLY with index numbers like [2, 4]. If no matches, reply []
 `;
 
     const response = await openai.chat.completions.create({
