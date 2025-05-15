@@ -16,9 +16,7 @@ const pool = new Pool({
   database: process.env.PGDATABASE,
   password: process.env.PGPASSWORD,
   port: process.env.PGPORT,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: { rejectUnauthorized: false },
 });
 
 app.use(cors());
@@ -97,7 +95,7 @@ Now translate:
   }
 });
 
-// Enhanced Semantic Search with price filtering
+//Enhanced Semantic Search with strict price filtering
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
@@ -129,23 +127,22 @@ app.post("/semantic-search", async (req, res) => {
 
   try {
     const prompt = `
-You are a strict e-commerce product search assistant.
+You are a strict AI product matching assistant.
 
-Match the user's query to the most relevant products ONLY from the list below.
-Follow these strict rules:
+Match the user query to the right product(s) ONLY from this list.
 
-- Only return phones if query asks for phone, camera if it asks for camera, etc.
-- If the query says "Android", never return iPhones.
-- Match price strictly (under, over, between, cheapest, most expensive)
-- Match use-case like "drawing/sketching" only if stylus/pen is mentioned.
-- Return [] if no match.
+Rules:
+- Match product category (phone, camera, laptop, etc.) precisely
+- Follow keywords like "Android", "iPhone", "vlogging", "drawing", etc.
+- Follow pricing rules: under, over, between, cheapest, most expensive
+- Don't guess. Return [] if there's no perfect match
 
-Query: "${query}"
+User Query: "${query}"
 
-Product list:
+Product List:
 ${filtered.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Reply with [index numbers] of matching products. Return [] if none.
+Respond ONLY with index numbers in format [2, 5] or [] if no match.
 `;
 
     const response = await openai.chat.completions.create({
@@ -160,7 +157,7 @@ Reply with [index numbers] of matching products. Return [] if none.
       ? matches[1].split(",").map((s) => parseInt(s.trim()) - 1)
       : [];
 
-    const matchedProducts = indexes.map((i) => filtered[i]).filter(Boolean);
+    const matchedProducts = indexes.map(i => filtered[i]).filter(Boolean);
     res.json({ results: matchedProducts });
   } catch (err) {
     console.error("Semantic search failed:", err);
