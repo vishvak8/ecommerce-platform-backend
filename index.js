@@ -104,16 +104,25 @@ app.post("/semantic-search", async (req, res) => {
 
   try {
     const prompt = `
-You are an intelligent e-commerce assistant.
-Given the user's query: "${query}"
-And the following product list:\n\n${products
-      .map((p, i) => `${i + 1}. ${p.name}: ${p.description}`)
+You are a smart e-commerce search assistant. 
+Your task is to identify the most relevant products from the list based on the user's query.
+
+Match based on:
+- Product name and description
+- Features like chipset (A17, Snapdragon), brand (Apple, Samsung), camera, etc.
+- Price if mentioned (e.g. "under ₹100000")
+
+Strictly avoid unrelated or vaguely matching products.
+
+User query: "${query}"
+
+Product list:
+${products
+      .map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`)
       .join("\n")}
 
-If the query mentions "Android", prefer Android-based phones and exclude iPhones or iOS.
-If the query mentions "iPhone" or "iOS", only return iPhone-related products.
-Respond only with the numbers of the top 1–3 most relevant products in array format like [1, 3, 5].
-Do not include any explanations, just return the array.`;
+Return only the index numbers of the top 1–3 best matching products like [1, 2, 4]. Do not include any explanation.
+`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
