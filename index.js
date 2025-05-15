@@ -79,7 +79,6 @@ Now translate:
     });
 
     let rawOutput = response.choices[0].message.content || "";
-
     let translated = rawOutput
       .replace(/[\u200E\u200F\u202A-\u202E]/g, "")
       .replace(/<[^>]*>?/gm, "")
@@ -98,9 +97,35 @@ Now translate:
   }
 });
 
-// Enhanced Semantic Search Fix
+// Enhanced Semantic Search with price filtering
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
+
+  const underMatch = query.match(/under\s*₹?(\d+)/i);
+  const overMatch = query.match(/over\s*₹?(\d+)/i);
+  const betweenMatch = query.match(/between\s*₹?(\d+)\s*and\s*₹?(\d+)/i);
+  const cheapest = /cheapest/i.test(query);
+  const expensive = /most expensive/i.test(query);
+
+  let filtered = [...products];
+
+  if (betweenMatch) {
+    const low = parseInt(betweenMatch[1]);
+    const high = parseInt(betweenMatch[2]);
+    filtered = filtered.filter(p => parseFloat(p.price) >= low && parseFloat(p.price) <= high);
+  } else if (underMatch) {
+    const max = parseInt(underMatch[1]);
+    filtered = filtered.filter(p => parseFloat(p.price) <= max);
+  } else if (overMatch) {
+    const min = parseInt(overMatch[1]);
+    filtered = filtered.filter(p => parseFloat(p.price) >= min);
+  } else if (cheapest) {
+    const minPrice = Math.min(...products.map(p => parseFloat(p.price)));
+    filtered = products.filter(p => parseFloat(p.price) === minPrice);
+  } else if (expensive) {
+    const maxPrice = Math.max(...products.map(p => parseFloat(p.price)));
+    filtered = products.filter(p => parseFloat(p.price) === maxPrice);
+  }
 
   try {
     const prompt = `
@@ -109,18 +134,18 @@ You are a strict e-commerce product search assistant.
 Match the user's query to the most relevant products ONLY from the list below.
 Follow these strict rules:
 
-- If the query says "phone", do NOT return laptops or cameras.
+- Only return phones if query asks for phone, camera if it asks for camera, etc.
 - If the query says "Android", never return iPhones.
-- Match price strictly: if it says "under ₹100000", only return products with price below 100000.
-- Match use-case like "drawing/sketching" only with devices that clearly mention stylus, pen, or note-taking support.
-- Return nothing ([]) if no strong match exists. Do NOT guess.
+- Match price strictly (under, over, between, cheapest, most expensive)
+- Match use-case like "drawing/sketching" only if stylus/pen is mentioned.
+- Return [] if no match.
 
 Query: "${query}"
 
 Product list:
-${products.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
+${filtered.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Reply ONLY with numbers like [1, 3] or [] if no match.
+Reply with [index numbers] of matching products. Return [] if none.
 `;
 
     const response = await openai.chat.completions.create({
@@ -135,7 +160,7 @@ Reply ONLY with numbers like [1, 3] or [] if no match.
       ? matches[1].split(",").map((s) => parseInt(s.trim()) - 1)
       : [];
 
-    const matchedProducts = indexes.map((i) => products[i]).filter(Boolean);
+    const matchedProducts = indexes.map((i) => filtered[i]).filter(Boolean);
     res.json({ results: matchedProducts });
   } catch (err) {
     console.error("Semantic search failed:", err);
