@@ -98,7 +98,7 @@ Now translate:
   }
 });
 
-// ✅ Enhanced Semantic Search
+// Enhanced Semantic Search
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
