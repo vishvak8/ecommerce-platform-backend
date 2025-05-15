@@ -95,7 +95,7 @@ Now translate:
   }
 });
 
-//Enhanced Semantic Search with strict price filtering
+// Enhanced Semantic Search with strict category & price filtering
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
@@ -129,20 +129,22 @@ app.post("/semantic-search", async (req, res) => {
     const prompt = `
 You are a strict AI product matching assistant.
 
-Match the user query to the right product(s) ONLY from this list.
+Match the user query to the correct product(s) ONLY from this list.
 
 Rules:
-- Match product category (phone, camera, laptop, etc.) precisely
+- Match product category (phone, camera, laptop, headphones, etc.) precisely
 - Follow keywords like "Android", "iPhone", "vlogging", "drawing", etc.
-- Follow pricing rules: under, over, between, cheapest, most expensive
-- Don't guess. Return [] if there's no perfect match
+- Match price rules: under, over, between, cheapest, most expensive
+- Match "wireless noise canceling headphones" ONLY to headphone-type products with those features
+- Match "drawing/sketching" ONLY to products that support stylus or pen input
+- Don't guess. Return [] if there's no strong match
 
 User Query: "${query}"
 
 Product List:
 ${filtered.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Respond ONLY with index numbers in format [2, 5] or [] if no match.
+Respond ONLY with index numbers like [1, 4] or [] if no match.
 `;
 
     const response = await openai.chat.completions.create({
