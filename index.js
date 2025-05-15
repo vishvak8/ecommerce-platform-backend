@@ -17,7 +17,7 @@ const pool = new Pool({
   password: process.env.PGPASSWORD,
   port: process.env.PGPORT,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // Required by Render
   },
 });
 
@@ -80,12 +80,11 @@ Now translate:
 
     let rawOutput = response.choices[0].message.content || "";
 
-    // Clean and format
     let translated = rawOutput
-      .replace(/[\u200E\u200F\u202A-\u202E]/g, "")       // remove invisible unicode
-      .replace(/<[^>]*>?/gm, "")                         // remove HTML tags
-      .replace(/^"(.*)"$/, "$1")                         // remove surrounding quotes
-      .replace(/[।|]+$/, "")                             // remove trailing । or |
+      .replace(/[\u200E\u200F\u202A-\u202E]/g, "")
+      .replace(/<[^>]*>?/gm, "")
+      .replace(/^"(.*)"$/, "$1")
+      .replace(/[।|]+$/, "")
       .trim();
 
     if (translated.length > 0) {
@@ -106,13 +105,15 @@ app.post("/semantic-search", async (req, res) => {
   try {
     const prompt = `
 You are an intelligent e-commerce assistant.
-Given this user query: "${query}"
+Given the user's query: "${query}"
 And the following product list:\n\n${products
       .map((p, i) => `${i + 1}. ${p.name}: ${p.description}`)
       .join("\n")}
 
-Return the numbers of the top 1–3 most relevant products in an array format like: [1, 3, 5]
-Only use the numbers.`;
+If the query mentions "Android", prefer Android-based phones and exclude iPhones or iOS.
+If the query mentions "iPhone" or "iOS", only return iPhone-related products.
+Respond only with the numbers of the top 1–3 most relevant products in array format like [1, 3, 5].
+Do not include any explanations, just return the array.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
