@@ -22,8 +22,6 @@ const pool = new Pool({
 app.use(cors());
 app.use(bodyParser.json());
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 // Save product
 app.post("/products", async (req, res) => {
   const { name, price, description, imageUrl } = req.body;
@@ -50,11 +48,14 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// Translate description
+// Translation using OpenAI
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 app.post("/translate", async (req, res) => {
   const { text } = req.body;
   const prompt = `
-Translate the following English product description into fluent, natural Hindi. Avoid robotic or overly literal translation.
+Translate the following English product description into **natural, fluent Hindi** as spoken by a native Hindi speaker.
+Avoid robotic or literal translation. Make sure it sounds smooth, clean, and human-like.
 
 Example:
 English: "Apple MacBook Pro with M2 chip and Retina Display"
@@ -94,7 +95,7 @@ Now translate:
   }
 });
 
-// Semantic Search
+// ✅ Enhanced Semantic Search with strict category & price filtering
 app.post("/semantic-search", async (req, res) => {
   const { query, products } = req.body;
 
@@ -124,22 +125,28 @@ app.post("/semantic-search", async (req, res) => {
     filtered = products.filter(p => parseFloat(p.price) === maxPrice);
   }
 
-  if (filtered.length === 0) return res.json({ results: [] });
+  try {
+    const prompt = `
+You are a strict AI product matching assistant.
 
-  const prompt = `
-You are an AI assistant that matches product search queries to a list of products.
+Match the user query to the correct product(s) ONLY from this list.
 
-Use your understanding of product categories, names, keywords, and descriptions to return the best matching items. Be flexible — it's okay to return a match even if it's not exact, as long as it's relevant.
+Rules:
+- Match product category (phone, camera, laptop, headphones, etc.) precisely
+- Follow keywords like "Android", "iPhone", "vlogging", "drawing", etc.
+- Match price rules: under, over, between, cheapest, most expensive
+- Match "wireless noise canceling headphones" ONLY to headphone-type products with those features
+- Match "drawing/sketching" ONLY to products that support stylus or pen input
+- Don't guess. Return [] if there's no strong match
 
-Query: "${query}"
+User Query: "${query}"
 
 Product List:
 ${filtered.map((p, i) => `${i + 1}. ${p.name} — ₹${p.price} — ${p.description}`).join("\n")}
 
-Reply with matching product indexes in this format: [1, 3] or [] if no relevant product.
+Respond ONLY with index numbers like [1, 4] or [] if no match.
 `;
 
-  try {
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
