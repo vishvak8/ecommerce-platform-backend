@@ -38,9 +38,9 @@ This is the backend for a mini e-commerce platform built with Node.js, Express, 
 
 ---
 
-## Setup Instructions
+## Setup Instructions (Local)
 
-1. **Clone the repository**
+1. **Clone the backend repository**
 
 ```bash
 git clone https://github.com/vishvak8/ecommerce-platform-backend.git
@@ -66,6 +66,13 @@ PGPORT=5432
 OPENAI_API_KEY=your_openai_key
 ```
 
+4. **Start the backend server**
+
+```bash
+npm start
+```
+Backend will run on: http://localhost:5001
+
 ### API Endpoints
 
 | Method | Endpoint           | Description                              |
@@ -74,6 +81,32 @@ OPENAI_API_KEY=your_openai_key
 | GET    | `/products`        | Fetch all submitted products             |
 | POST   | `/semantic-search` | Smart AI-powered product search          |
 | POST   | `/translate`       | Translate product description to Hindi   |
+
+---
+
+## Frontend Setup
+
+1. **Clone the Frontend Repository**
+
+```bash
+git clone https://github.com/vishvak8/ecommerce-platform-frontend.git
+cd ecommerce-platform-frontend
+```
+
+2. **Install dependencies**
+
+```bash
+npm install
+```
+
+3. **Run the Development Server**
+
+```bash
+npm run dev
+```
+
+Frontend will run on: http://localhost:5173
+Make sure your backend is also running in a separate terminal.
 
 ---
 
